@@ -50,23 +50,16 @@
   </div>
 
   <div class="panel">
-    <div class="panel-header">mdast (remark-parse)</div>
+    <div class="panel-header">mdast (remark-parse 11.0.0)</div>
     <div class="panel-body">
-      <pre id="ast"><span class="loading">Loading remark-parse...</span></pre>
+      <pre id="ast"><span class="loading">Loading remark-parse 11.0.0...</span></pre>
     </div>
   </div>
 </div>
 
-<script type="importmap">
-{
-  "imports": {
-    "micromark": "https://esm.sh/micromark@4.0.1",
-    "mdast-util-from-markdown": "https://esm.sh/mdast-util-from-markdown@2.0.2"
-  }
-}
-</script>
 <script type="module">
-import { fromMarkdown } from "mdast-util-from-markdown";
+import { unified } from "https://esm.sh/unified@11.0.5";
+import remarkParse from "https://esm.sh/remark-parse@11.0.0";
 
 const inputEl = document.getElementById("input");
 const astEl = document.getElementById("ast");
@@ -77,7 +70,7 @@ function update() {
   const source = inputEl.value;
 
   try {
-    const tree = fromMarkdown(source);
+    const tree = unified().use(remarkParse).parse(source);
     astEl.innerHTML = renderNode(tree, 0);
   } catch (e) {
     astEl.innerHTML = `<span class="error">Error: ${escapeHtml(e.message)}</span>`;

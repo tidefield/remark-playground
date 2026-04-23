@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Remark Markdown Playground</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace; background: #1e1e2e; color: #cdd6f4; height: 100vh; display: flex; flex-direction: column; }
+  header { padding: 12px 20px; background: #181825; border-bottom: 1px solid #313244; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 16px; font-weight: 600; color: #89b4fa; }
+  header span { font-size: 12px; color: #6c7086; }
+  #permalink { background: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 4px; padding: 4px 12px; font-size: 12px; cursor: pointer; margin-left: auto; font-family: inherit; }
+  #permalink:hover { background: #45475a; }
+  #permalink.copied { background: #a6e3a1; color: #1e1e2e; border-color: #a6e3a1; }
+  .container { display: grid; grid-template-columns: 1fr 1fr; flex: 1; gap: 1px; background: #313244; }
+  .panel { background: #1e1e2e; display: flex; flex-direction: column; overflow: hidden; }
+  .panel-header { padding: 8px 16px; background: #181825; font-size: 12px; font-weight: 600; color: #a6adc8; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #313244; }
+  .panel-body { flex: 1; overflow: auto; padding: 12px 16px; }
+  #input { width: 100%; height: 100%; background: transparent; border: none; color: #cdd6f4; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 14px; line-height: 1.6; resize: none; outline: none; }
+  #input::placeholder { color: #585b70; }
+  pre { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  #ast .node-type { color: #f38ba8; }
+  #ast .node-text { color: #a6e3a1; }
+  #ast .node-pos { color: #585b70; }
+  .loading { color: #585b70; font-style: italic; }
+  .error { color: #f38ba8; }
+  @media (max-width: 768px) {
+    .container { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Remark Markdown Playground</h1>
+  <span>Type markdown on the left, see the mdast on the right</span>
+  <button id="permalink">Permalink</button>
+  <a href="https://github.com/tidefield/remark-playground" target="_blank" style="color: #6c7086; text-decoration: none; font-size: 14px;" title="View on GitHub">
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+  </a>
+</header>
+
+<div class="container">
+  <div class="panel">
+    <div class="panel-header">Input</div>
+    <div class="panel-body">
+      <textarea id="input" placeholder="Type markdown here..." spellcheck="false">*(*foo*)*</textarea>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">mdast (remark-parse)</div>
+    <div class="panel-body">
+      <pre id="ast"><span class="loading">Loading remark-parse...</span></pre>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "micromark": "https://esm.sh/micromark@4.0.1",
+    "mdast-util-from-markdown": "https://esm.sh/mdast-util-from-markdown@2.0.2"
+  }
+}
+</script>
+<script type="module">
+import { fromMarkdown } from "mdast-util-from-markdown";
+
+const inputEl = document.getElementById("input");
+const astEl = document.getElementById("ast");
+
+let debounceTimer;
+
+function update() {
+  const source = inputEl.value;
+
+  try {
+    const tree = fromMarkdown(source);
+    astEl.innerHTML = renderNode(tree, 0);
+  } catch (e) {
+    astEl.innerHTML = `<span class="error">Error: ${escapeHtml(e.message)}</span>`;
+  }
+}
+
+function renderNode(node, depth) {
+  if (!node) return "";
+  const indent = "  ".repeat(depth);
+  let out = "";
+
+  if (node.type === "text") {
+    out += `${indent}<span class="node-text">text</span> ${escapeHtml(JSON.stringify(node.value))}\n`;
+  } else if (node.type === "inlineCode") {
+    out += `${indent}<span class="node-type">inlineCode</span> ${escapeHtml(JSON.stringify(node.value))}\n`;
+  } else {
+    const pos = node.position
+      ? ` <span class="node-pos">[${node.position.start.offset}..${node.position.end.offset}]</span>`
+      : "";
+    out += `${indent}<span class="node-type">${escapeHtml(node.type)}</span>${pos}\n`;
+
+    if (node.children) {
+      for (const child of node.children) {
+        out += renderNode(child, depth + 1);
+      }
+    }
+    if (node.value !== undefined && !["text", "inlineCode"].includes(node.type)) {
+      out += `${indent}  <span class="node-text">value: ${escapeHtml(JSON.stringify(node.value))}</span>\n`;
+    }
+  }
+  return out;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+inputEl.addEventListener("input", () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(update, 100);
+});
+
+// Permalink
+const permalinkBtn = document.getElementById("permalink");
+permalinkBtn.addEventListener("click", () => {
+  const encoded = btoa(unescape(encodeURIComponent(inputEl.value)));
+  const url = location.origin + location.pathname + "#" + encoded;
+  history.replaceState(null, "", "#" + encoded);
+  navigator.clipboard.writeText(url).then(() => {
+    permalinkBtn.textContent = "Copied!";
+    permalinkBtn.classList.add("copied");
+    setTimeout(() => {
+      permalinkBtn.textContent = "Permalink";
+      permalinkBtn.classList.remove("copied");
+    }, 1500);
+  });
+});
+
+// Restore from URL hash
+if (location.hash.length > 1) {
+  try {
+    inputEl.value = decodeURIComponent(escape(atob(location.hash.slice(1))));
+  } catch (e) {}
+}
+
+// Initial render
+update();
+</script>
+
+</body>
+</html>
